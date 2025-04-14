@@ -1,0 +1,59 @@
+<!-- templates/index.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Spectacles.ai – Deblurring & Super-Resolution</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .image-container {
+            display: inline-block;
+            margin: 20px;
+        }
+        img {
+            max-width: 300px;
+            border: 1px solid #ccc;
+            padding: 5px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spectacles.ai 👓</h1>
+    <p>Upload a blurry image to see the magic of Deblurring + AI Super-Resolution</p>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="image" accept=".jpg,.jpeg,.png" required>
+        <br><br>
+        <input type="submit" value="Upload & Process">
+    </form>
+
+    {% if original %}
+        <h2>Results:</h2>
+        <div class="image-container">
+            <h3>Original</h3>
+            <img src="{{ url_for('static', filename='uploads/' + original) }}" alt="Original">
+        </div>
+        <div class="image-container">
+            <h3>Deblurred</h3>
+            <img src="{{ url_for('static', filename='uploads/' + deblurred) }}" alt="Deblurred">
+        </div>
+        <div class="image-container">
+            <h3>Super-Resolved</h3>
+            <img src="{{ url_for('static', filename='uploads/' + enhanced) }}" alt="Enhanced">
+        </div>
+    {% endif %}
+</body>
+</html>
