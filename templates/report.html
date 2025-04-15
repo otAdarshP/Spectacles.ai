@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Spectacles.ai – Enhancement Report</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 p-8 font-sans">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">📝 Enhancement Report – Spectacles.ai</h1>
+
+    {% if error %}
+    <div class="text-center text-red-600 font-medium">{{ error }}</div>
+    {% else %}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+      <div class="text-center">
+        <h2 class="font-semibold mb-2">Original</h2>
+        <img src="{{ url_for('static', filename='uploads/' + data.original) }}" class="rounded shadow">
+      </div>
+      <div class="text-center">
+        <h2 class="font-semibold mb-2">Deblurred</h2>
+        <img src="{{ url_for('static', filename='uploads/' + data.deblurred) }}" class="rounded shadow">
+      </div>
+      <div class="text-center">
+        <h2 class="font-semibold mb-2">Enhanced (x3)</h2>
+        <img src="{{ url_for('static', filename='uploads/' + data.enhanced_x3) }}" class="rounded shadow">
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded shadow text-center">
+      <h3 class="text-xl font-semibold mb-4">Metrics</h3>
+      <p><strong>PSNR:</strong> {{ data.metrics.psnr }} dB</p>
+      <p><strong>SSIM:</strong> {{ data.metrics.ssim }}</p>
+      <p><strong>Processing Time:</strong> {{ data.metrics.time }} seconds</p>
+      <p><strong>Contrast Gain:</strong> {{ data.metrics.contrast_gain }}</p>
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-6">
+      <a href="/" class="text-blue-600 hover:underline">⬅️ Go Back</a>
+    </div>
+  </div>
+</body>
+</html>

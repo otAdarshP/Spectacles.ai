@@ -2,3 +2,4 @@ Flask==2.3.2
 opencv-contrib-python==4.10.0.84
 numpy
 matplotlib
+scikit-image
