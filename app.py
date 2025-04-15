@@ -117,7 +117,9 @@ def index():
                                        "ssim": round(ssim_score, 3) if ssim_score else None,
                                        "time": processing_time,
                                        "contrast_gain": round(contrast_gain, 2)
-                                   })
+                                   },
+                                   psnr_val=round(psnr_score, 2) if psnr_score else None,
+                                   ssim_val=round(ssim_score, 3) if ssim_score else None)
 
         except Exception as e:
             return render_template("index.html", error=f"Processing failed: {str(e)}")
