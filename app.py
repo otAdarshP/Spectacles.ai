@@ -77,9 +77,15 @@ def index():
                 enhanced_paths[label] = f"enhanced_{label}_" + file.filename
 
                 if label == "x3":
-                    enhanced_gray = convert_to_gray(enhanced)
-                    psnr_score = psnr(gray, enhanced_gray)
-                    ssim_score = ssim(gray, enhanced_gray)
+                     enhanced_gray = convert_to_gray(enhanced)
+                     # Resize gray to match enhanced_gray
+                     if gray.shape != enhanced_gray.shape:
+                          resized_gray = cv2.resize(gray, (enhanced_gray.shape[1], enhanced_gray.shape[0]))
+                     else:
+                          resized_gray = gray
+                     psnr_score = psnr(resized_gray, enhanced_gray)
+                     ssim_score = ssim(resized_gray, enhanced_gray)
+
 
             # Calculate contrast gain
             before_contrast = np.std(gray)
