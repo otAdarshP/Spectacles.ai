@@ -11,7 +11,7 @@ Outputs: Original image --> Deblurred image --> Enhanced high-res image
 
 Features:
 
-💻 Frontend: Easy-to-use UI using Flask and HTML.
+💻 Frontend: Flask and HTML, Tailwind CSS, Vanilla JavaScript.
 
 🧠 Backend: Modular, reusable, clean Python functions.
 
