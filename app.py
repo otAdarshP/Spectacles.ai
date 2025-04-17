@@ -7,8 +7,6 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 from deblurring import load_image, convert_to_gray, deblur_fft, upscale_image
 from flask import session
-  # required to use session
-
 
 app = Flask(__name__)
 
@@ -48,7 +46,7 @@ def index():
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
             deblurred = clahe.apply(deblurred)
 
-            # Optional: Invert bright backgrounds
+            # Invert bright backgrounds
             if np.mean(deblurred) > 200:
                 deblurred = cv2.bitwise_not(deblurred)
 
