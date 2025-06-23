@@ -1,8 +1,9 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Spectacles.ai – Deblurring & Super-Resolution</title>
+  <title>Spectacles.ai – Deblur & Enhance</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -15,17 +16,9 @@
   </script>
 </head>
 <body class="bg-gray-100 text-gray-900 font-sans min-h-screen">
-  <div class="max-w-4xl mx-auto px-6 py-12">
-    <h1 class="text-4xl font-bold text-center mb-3">Spectacles.ai 👓</h1>
-    <p class="text-center text-gray-600 mb-8">
-      Upload a blurry image and see it enhanced with AI-powered magic!
-    </p>
-
-    {% if error %}
-      <div class="bg-red-100 text-red-800 px-4 py-3 rounded text-center mb-6">
-        {{ error }}
-      </div>
-    {% endif %}
+  <div class="max-w-xl mx-auto px-6 py-12">
+    <h1 class="text-4xl font-bold text-center mb-4">Spectacles.ai 👓</h1>
+    <p class="text-center text-gray-600 mb-8">Upload your blurry image and let AI enhance it.</p>
 
     <form method="POST" enctype="multipart/form-data" class="bg-white p-6 rounded shadow-md">
       <input
@@ -34,14 +27,10 @@
         accept=".jpg,.jpeg,.png"
         onchange="previewImage(event)"
         class="w-full px-3 py-2 mb-4 border border-gray-300 rounded cursor-pointer bg-gray-50"
+        required
       >
       <div class="flex justify-center mb-6">
-        <img
-          id="preview"
-          src="#"
-          alt="Preview"
-          class="hidden max-h-64 rounded border shadow-md"
-        >
+        <img id="preview" src="#" alt="Preview" class="hidden max-h-64 rounded border shadow-md">
       </div>
       <div class="text-center">
         <button
@@ -52,70 +41,6 @@
         </button>
       </div>
     </form>
-
-    {% if original %}
-      <h2 class="text-2xl font-semibold text-center mt-10 mb-6">Results</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="text-center">
-          <h3 class="font-medium mb-2">Original</h3>
-          <img
-            src="{{ url_for('static', filename='uploads/' + original) }}"
-            alt="Original"
-            class="rounded shadow"
-          >
-        </div>
-        <div class="text-center">
-          <h3 class="font-medium mb-2">Deblurred</h3>
-          <img
-            src="{{ url_for('static', filename='uploads/' + deblurred) }}"
-            alt="Deblurred"
-            class="rounded shadow"
-          >
-        </div>
-
-        {% for label, img in enhanced_paths.items() %}
-          <div class="text-center">
-            <h3 class="font-medium mb-2">
-              Enhanced (EDSR {{ label|upper }})
-            </h3>
-            <img
-              src="{{ url_for('static', filename='uploads/' + img) }}"
-              alt="Enhanced {{ label }}"
-              class="rounded shadow"
-            >
-          </div>
-        {% endfor %}
-      </div>
-
-
-      <!-- Quality Metrics -->
-      <div class="bg-white p-6 rounded shadow text-center mt-6">
-        <h4>📈 Quality Metrics</h4>
-        <ul>
-          <li><b>PSNR:</b> {{ psnr_val }} dB</li>
-          <li><b>SSIM:</b> {{ ssim_val }}</li>
-        </ul>
-      </div>
-
-      <!-- Metrics summary -->
-      <div class="bg-white p-6 rounded shadow text-center mt-6">
-        <h3 class="text-xl font-semibold mb-4">Metrics</h3>
-        <p><strong>PSNR:</strong> {{ metrics.psnr }} dB</p>
-        <p><strong>SSIM:</strong> {{ metrics.ssim }}</p>
-        <p><strong>Processing Time:</strong> {{ metrics.time }} seconds</p>
-        <p><strong>Contrast Gain:</strong> {{ metrics.contrast_gain }}</p>
-      </div>
-
-      <!-- View Detailed Report button -->
-      <div class="text-center mt-6">
-        <a
-          href="{{ url_for('report') }}"
-          class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-        >
-          View Detailed Report
-        </a>
-      </div>
-    {% endif %}
   </div>
 </body>
 </html>

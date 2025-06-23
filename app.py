@@ -1,128 +1,93 @@
 import os
-import numpy as np
 import time
 import cv2
-from flask import Flask, render_template, request
-from skimage.metrics import peak_signal_noise_ratio as psnr
-from skimage.metrics import structural_similarity as ssim
-from deblurring import load_image, convert_to_gray, deblur_fft, upscale_image
-from flask import session
+import numpy as np
+from flask import Flask, render_template, request, send_from_directory, redirect, url_for, session
+from werkzeug.utils import secure_filename
+from skimage.metrics import peak_signal_noise_ratio as psnr, structural_similarity as ssim
+from cv2 import dnn_superres
 
 app = Flask(__name__)
-
-app.secret_key = 'Mahi@7781'
-
-UPLOAD_FOLDER = 'static/uploads'
+app.secret_key = 'spectacles_secret_key'
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-@app.route("/report")
-def report():
-    if 'last_upload' not in session:
-        return render_template("report.html", error="No recent upload to report.")
-    return render_template("report.html", data=session['last_upload'])
+# Load EDSR model once
+ds_model = dnn_superres.DnnSuperResImpl_create()
+ds_model.readModel("models/EDSR_x3.pb")
+ds_model.setModel("edsr", 3)
 
+def enhance_image(img_path):
+    original = cv2.imread(img_path)
+    gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
 
-@app.route("/", methods=["GET", "POST"])
+    # Deblurring via Wiener Filter (basic implementation)
+    psf = np.ones((5, 5)) / 25
+    psf = psf / psf.sum()
+    blurred_fft = np.fft.fft2(gray)
+    psf_fft = np.fft.fft2(psf, s=gray.shape)
+    restored = np.abs(np.fft.ifft2(blurred_fft / (psf_fft + 1e-3)))
+    restored = np.uint8(np.clip(restored, 0, 255))
+
+    # Contrast Limited Adaptive Histogram Equalization
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced_gray = clahe.apply(restored)
+
+    # Super-resolution
+    sr = ds_model.upsample(original)
+
+    # Save outputs
+    base = os.path.basename(img_path)
+    name, ext = os.path.splitext(base)
+    deblurred_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{name}_deblurred{ext}")
+    enhanced_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{name}_enhanced{ext}")
+    cv2.imwrite(deblurred_path, enhanced_gray)
+    cv2.imwrite(enhanced_path, sr)
+
+    # Metrics
+    psnr_val = psnr(gray, enhanced_gray)
+    ssim_val = ssim(gray, enhanced_gray)
+    contrast_gain = float(np.std(enhanced_gray) - np.std(gray))
+
+    return deblurred_path, enhanced_path, psnr_val, ssim_val, contrast_gain
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    if request.method == "POST":
-        file = request.files.get("image")
+    if request.method == 'POST':
+        start = time.time()
+        file = request.files['image']
+        if file:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
 
-        if file is None or file.filename == "":
-            return render_template("index.html", error="No file selected. Please upload a valid image.")
+            deblurred_path, enhanced_path, psnr_val, ssim_val, contrast_gain = enhance_image(filepath)
+            elapsed = round(time.time() - start, 3)
 
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(filepath)
-
-        try:
-            start_time = time.time()
-
-            # Stage 1: Load and deblur
-            img = load_image(filepath)
-            gray = convert_to_gray(img)
-            deblurred = deblur_fft(gray)
-
-            # Stage 2: Contrast enhancement
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-            deblurred = clahe.apply(deblurred)
-
-            # Invert bright backgrounds
-            if np.mean(deblurred) > 200:
-                deblurred = cv2.bitwise_not(deblurred)
-
-            # Convert grayscale to BGR
-            deblurred_bgr = cv2.cvtColor(deblurred, cv2.COLOR_GRAY2BGR)
-
-            # Save deblurred image
-            deblurred_path = os.path.join(app.config['UPLOAD_FOLDER'], "deblurred_" + file.filename)
-            cv2.imwrite(deblurred_path, deblurred)
-
-            # Super-resolution models
-            models = {
-                "x2": ("models/EDSR_x2.pb", "edsr", 2),
-                "x3": ("models/EDSR_x3.pb", "edsr", 3),
-                "x4": ("models/EDSR_x4.pb", "edsr", 4)
+            session['results'] = {
+                'original': filename,
+                'deblurred': os.path.basename(deblurred_path),
+                'enhanced': os.path.basename(enhanced_path),
+                'psnr': round(psnr_val, 2),
+                'ssim': round(ssim_val, 3),
+                'contrast_gain': round(contrast_gain, 2),
+                'time': elapsed
             }
 
-            enhanced_paths = {}
-            psnr_score = None
-            ssim_score = None
+            return redirect(url_for('results'))
 
-            for label, (path, name, scale) in models.items():
-                enhanced = upscale_image(deblurred_bgr, path, name, scale)
-                save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"enhanced_{label}_" + file.filename)
-                cv2.imwrite(save_path, enhanced)
-                enhanced_paths[label] = f"enhanced_{label}_" + file.filename
+    return render_template('index.html')
 
-                if label == "x3":
-                     enhanced_gray = convert_to_gray(enhanced)
-                     # Resize gray to match enhanced_gray
-                     if gray.shape != enhanced_gray.shape:
-                          resized_gray = cv2.resize(gray, (enhanced_gray.shape[1], enhanced_gray.shape[0]))
-                     else:
-                          resized_gray = gray
-                     psnr_score = psnr(resized_gray, enhanced_gray)
-                     ssim_score = ssim(resized_gray, enhanced_gray)
+@app.route('/results')
+def results():
+    if 'results' not in session:
+        return redirect(url_for('index'))
+    return render_template('results.html', metrics=session['results'])
 
+@app.route('/report')
+def report():
+    return render_template('report.html', metrics=session.get('results', {}))
 
-            # Calculate contrast gain
-            before_contrast = np.std(gray)
-            after_contrast = np.std(deblurred)
-            contrast_gain = after_contrast - before_contrast
-
-            # Total processing time
-            processing_time = round(time.time() - start_time, 3)
-
-            session['last_upload'] = {
-                "original": file.filename,
-                "deblurred": "deblurred_" + file.filename,
-                "enhanced_x3": enhanced_paths.get("x3"),
-                "metrics": {
-                    "psnr": round(psnr_score, 2) if psnr_score else None,
-                    "ssim": round(ssim_score, 3) if ssim_score else None,
-                    "time": processing_time,
-                    "contrast_gain": round(contrast_gain, 2)
-                }
-            }
-
-
-            return render_template("index.html",
-                                   original=file.filename,
-                                   deblurred="deblurred_" + file.filename,
-                                   enhanced_paths=enhanced_paths,
-                                   metrics={
-                                       "psnr": round(psnr_score, 2) if psnr_score else None,
-                                       "ssim": round(ssim_score, 3) if ssim_score else None,
-                                       "time": processing_time,
-                                       "contrast_gain": round(contrast_gain, 2)
-                                   },
-                                   psnr_val=round(psnr_score, 2) if psnr_score else None,
-                                   ssim_val=round(ssim_score, 3) if ssim_score else None)
-
-        except Exception as e:
-            return render_template("index.html", error=f"Processing failed: {str(e)}")
-
-    return render_template("index.html")
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
